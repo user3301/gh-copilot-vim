@@ -8,7 +8,7 @@ from pathlib import Path
 
 def ensure_prompt_toolkit() -> bool:
     try:
-        import prompt_toolkit  # noqa: F401
+        import prompt_toolkit
         return True
     except ImportError:
         print("prompt_toolkit is required but not installed.")
@@ -78,18 +78,15 @@ def main() -> int:
     from prompt_toolkit.key_binding.vi_state import InputMode
 
     vim_enabled = True
-
-    session = PromptSession(
-        editing_mode=EditingMode.VI,
-        history=FileHistory(str(Path.home() / ".copilot_vim_history")),
-    )
+    session_holder: dict[str, PromptSession] = {}
 
     def toolbar() -> str:
         if not vim_enabled:
             return "[ -- ]"
 
         mode = "INSERT"
-        app = getattr(session, "app", None)
+        session = session_holder.get("session")
+        app = getattr(session, "app", None) if session is not None else None
         if app is not None:
             vi_state = getattr(app.current_buffer, "vi_state", None)
             if vi_state is not None and vi_state.input_mode == InputMode.NAVIGATION:
@@ -97,7 +94,12 @@ def main() -> int:
 
         return f"[ VIM ] -- {mode} --"
 
-    session.bottom_toolbar = toolbar
+    session = PromptSession(
+        editing_mode=EditingMode.VI,
+        history=FileHistory(str(Path.home() / ".copilot_vim_history")),
+        bottom_toolbar=toolbar,
+    )
+    session_holder["session"] = session
 
     while True:
         try:
