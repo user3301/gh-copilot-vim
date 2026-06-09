@@ -120,10 +120,12 @@ def main() -> int:
         if not command:
             continue
 
-        subprocess.run(
+        result = subprocess.run(
             ["gh", "copilot", "-p", text, "--continue", "-s", *base_flags],
             check=False,
         )
+        if result.returncode != 0:
+            print(f"gh copilot command failed with exit code {result.returncode}")
 
 
 if __name__ == "__main__":
