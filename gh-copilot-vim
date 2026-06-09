@@ -1,0 +1,110 @@
+#!/usr/bin/env python3
+
+import argparse
+import subprocess
+import sys
+from pathlib import Path
+
+
+def ensure_prompt_toolkit() -> None:
+    try:
+        import prompt_toolkit  # noqa: F401
+    except ImportError:
+        subprocess.check_call(
+            [sys.executable, "-m", "pip", "install", "--quiet", "prompt_toolkit"]
+        )
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="gh copilot-vim",
+        description="Run gh copilot in a vim-enabled REPL.",
+    )
+    parser.add_argument("--effort")
+    parser.add_argument("--model")
+    parser.add_argument("--yolo", action="store_true")
+    parser.add_argument("--allow-all", action="store_true")
+    parser.add_argument("--add-dir", action="append", default=[])
+    return parser
+
+
+def forwarded_flags(args: argparse.Namespace) -> list[str]:
+    flags: list[str] = []
+
+    if args.effort:
+        flags.extend(["--effort", args.effort])
+    if args.model:
+        flags.extend(["--model", args.model])
+    if args.yolo:
+        flags.append("--yolo")
+    if args.allow_all:
+        flags.append("--allow-all")
+    for directory in args.add_dir:
+        flags.extend(["--add-dir", directory])
+
+    return flags
+
+
+def main() -> int:
+    parser = build_parser()
+    args = parser.parse_args()
+    base_flags = forwarded_flags(args)
+
+    ensure_prompt_toolkit()
+
+    from prompt_toolkit import PromptSession
+    from prompt_toolkit.enums import EditingMode
+    from prompt_toolkit.history import FileHistory
+    from prompt_toolkit.key_binding.vi_state import InputMode
+
+    vim_enabled = True
+
+    session = PromptSession(
+        editing_mode=EditingMode.VI,
+        history=FileHistory(str(Path.home() / ".copilot_vim_history")),
+    )
+
+    def toolbar() -> str:
+        if not vim_enabled:
+            return "[ -- ]"
+
+        mode = "INSERT"
+        app = getattr(session, "app", None)
+        if app is not None:
+            vi_state = getattr(app.current_buffer, "vi_state", None)
+            if vi_state is not None and vi_state.input_mode == InputMode.NAVIGATION:
+                mode = "NORMAL"
+
+        return f"[ VIM ] -- {mode} --"
+
+    session.bottom_toolbar = toolbar
+
+    while True:
+        try:
+            text = session.prompt(">>> ")
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return 0
+
+        command = text.strip()
+
+        if command in {":q", ":quit"}:
+            return 0
+
+        if command == "/vim":
+            vim_enabled = not vim_enabled
+            session.editing_mode = EditingMode.VI if vim_enabled else EditingMode.EMACS
+            print("vim mode enabled" if vim_enabled else "vim mode disabled")
+            continue
+
+        if not command:
+            continue
+
+        subprocess.run(
+            ["gh", "copilot", "-p", text, "--continue", "-s", *base_flags],
+            check=False,
+        )
+
+
+if __name__ == "__main__":
+    sys.exit(main())
