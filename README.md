@@ -12,7 +12,7 @@ Copilot CLI slash commands like `/vim` are currently hardcoded in the Copilot CL
 gh extension install user3301/gh-copilot-vim
 ```
 
-If `prompt_toolkit` is not available, the executable installs it automatically on first run.
+If `prompt_toolkit` is not available, the executable prompts to install it on first run.
 
 ## Usage
 
@@ -47,5 +47,3 @@ Bottom toolbar mode indicator:
 - vim ON + insert: `[ VIM ] -- INSERT --`
 - vim ON + normal: `[ VIM ] -- NORMAL --`
 - vim OFF: `[ -- ]`
-
-Multi-line input: use `Alt+Enter` for newline and `Enter` to submit.

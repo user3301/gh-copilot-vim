@@ -6,13 +6,25 @@ import sys
 from pathlib import Path
 
 
-def ensure_prompt_toolkit() -> None:
+def ensure_prompt_toolkit() -> bool:
     try:
         import prompt_toolkit  # noqa: F401
+        return True
     except ImportError:
+        print("prompt_toolkit is required but not installed.")
+        if not sys.stdin.isatty():
+            print("Install it with: pip install prompt_toolkit")
+            return False
+
+        answer = input("Install prompt_toolkit now? [Y/n] ").strip().lower()
+        if answer not in {"", "y", "yes"}:
+            print("Install it with: pip install prompt_toolkit")
+            return False
+
         subprocess.check_call(
             [sys.executable, "-m", "pip", "install", "--quiet", "prompt_toolkit"]
         )
+        return True
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -50,7 +62,8 @@ def main() -> int:
     args = parser.parse_args()
     base_flags = forwarded_flags(args)
 
-    ensure_prompt_toolkit()
+    if not ensure_prompt_toolkit():
+        return 1
 
     from prompt_toolkit import PromptSession
     from prompt_toolkit.enums import EditingMode
