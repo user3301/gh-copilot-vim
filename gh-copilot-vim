@@ -78,7 +78,7 @@ def main() -> int:
     from prompt_toolkit.key_binding.vi_state import InputMode
 
     vim_enabled = True
-    turn_count = 0
+    session_state = {"turn_count": 0}
     session_holder: dict[str, PromptSession] = {}
 
     def toolbar() -> str:
@@ -102,7 +102,7 @@ def main() -> int:
             status_parts.append("⚡ yolo")
         if args.allow_all:
             status_parts.append("✓ allow-all")
-        status_parts.append(f"turn: {turn_count}")
+        status_parts.append(f"turn: {session_state['turn_count']}")
 
         return "  |  ".join(status_parts)
 
@@ -134,7 +134,7 @@ def main() -> int:
         if not command:
             continue
 
-        turn_count += 1
+        session_state["turn_count"] += 1
         result = subprocess.run(
             ["gh", "copilot", "-p", text, "--continue", "-s", *base_flags],
             check=False,
