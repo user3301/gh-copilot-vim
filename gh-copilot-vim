@@ -3,6 +3,7 @@
 import argparse
 import subprocess
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 
@@ -64,6 +65,43 @@ def forwarded_flags(args: argparse.Namespace) -> list[str]:
     return flags
 
 
+@dataclass
+class SessionState:
+    vim_enabled: bool = True
+    turn_count: int = 0
+
+
+def toolbar_text(
+    args: argparse.Namespace,
+    session_holder: dict[str, "PromptSession"],
+    session_state: SessionState,
+    navigation_mode: object,
+) -> str:
+    status_parts: list[str] = []
+
+    if session_state.vim_enabled:
+        mode = "INSERT"
+        session = session_holder.get("session")
+        app = getattr(session, "app", None) if session is not None else None
+        if app is not None:
+            vi_state = getattr(app.current_buffer, "vi_state", None)
+            if vi_state is not None and vi_state.input_mode == navigation_mode:
+                mode = "NORMAL"
+        status_parts.append(f"[ VIM ] -- {mode} --")
+    else:
+        status_parts.append("[ -- ]")
+
+    status_parts.append(f"model: {args.model or 'default'}")
+    status_parts.append(f"effort: {args.effort or 'default'}")
+    if args.yolo:
+        status_parts.append("⚡ yolo")
+    if args.allow_all:
+        status_parts.append("✓ allow-all")
+    status_parts.append(f"turn: {session_state.turn_count}")
+
+    return "  |  ".join(status_parts)
+
+
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
@@ -77,39 +115,15 @@ def main() -> int:
     from prompt_toolkit.history import FileHistory
     from prompt_toolkit.key_binding.vi_state import InputMode
 
-    vim_enabled = True
-    session_state = {"turn_count": 0}
+    session_state = SessionState()
     session_holder: dict[str, PromptSession] = {}
-
-    def toolbar() -> str:
-        status_parts: list[str] = []
-
-        if vim_enabled:
-            mode = "INSERT"
-            session = session_holder.get("session")
-            app = getattr(session, "app", None) if session is not None else None
-            if app is not None:
-                vi_state = getattr(app.current_buffer, "vi_state", None)
-                if vi_state is not None and vi_state.input_mode == InputMode.NAVIGATION:
-                    mode = "NORMAL"
-            status_parts.append(f"[ VIM ] -- {mode} --")
-        else:
-            status_parts.append("[ -- ]")
-
-        status_parts.append(f"model: {args.model or 'default'}")
-        status_parts.append(f"effort: {args.effort or 'default'}")
-        if args.yolo:
-            status_parts.append("⚡ yolo")
-        if args.allow_all:
-            status_parts.append("✓ allow-all")
-        status_parts.append(f"turn: {session_state['turn_count']}")
-
-        return "  |  ".join(status_parts)
 
     session = PromptSession(
         editing_mode=EditingMode.VI,
         history=FileHistory(str(Path.home() / ".copilot_vim_history")),
-        bottom_toolbar=toolbar,
+        bottom_toolbar=lambda: toolbar_text(
+            args, session_holder, session_state, InputMode.NAVIGATION
+        ),
     )
     session_holder["session"] = session
 
@@ -126,15 +140,21 @@ def main() -> int:
             return 0
 
         if command == "/vim":
-            vim_enabled = not vim_enabled
-            session.editing_mode = EditingMode.VI if vim_enabled else EditingMode.EMACS
-            print("vim mode enabled" if vim_enabled else "vim mode disabled")
+            session_state.vim_enabled = not session_state.vim_enabled
+            session.editing_mode = (
+                EditingMode.VI if session_state.vim_enabled else EditingMode.EMACS
+            )
+            print(
+                "vim mode enabled"
+                if session_state.vim_enabled
+                else "vim mode disabled"
+            )
             continue
 
         if not command:
             continue
 
-        session_state["turn_count"] += 1
+        session_state.turn_count += 1
         result = subprocess.run(
             ["gh", "copilot", "-p", text, "--continue", "-s", *base_flags],
             check=False,
