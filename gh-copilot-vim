@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
 
+from __future__ import annotations
+
 import argparse
 import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from prompt_toolkit import PromptSession
+    from prompt_toolkit.key_binding.vi_state import InputMode
 
 
 def ensure_prompt_toolkit() -> bool:
@@ -73,9 +80,9 @@ class SessionState:
 
 def toolbar_text(
     args: argparse.Namespace,
-    session_holder: dict[str, "PromptSession"],
+    session_holder: dict[str, PromptSession],
     session_state: SessionState,
-    navigation_mode: object,
+    navigation_mode: InputMode,
 ) -> str:
     status_parts: list[str] = []
 
