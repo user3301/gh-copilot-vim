@@ -78,21 +78,33 @@ def main() -> int:
     from prompt_toolkit.key_binding.vi_state import InputMode
 
     vim_enabled = True
+    turn_count = 0
     session_holder: dict[str, PromptSession] = {}
 
     def toolbar() -> str:
-        if not vim_enabled:
-            return "[ -- ]"
+        status_parts: list[str] = []
 
-        mode = "INSERT"
-        session = session_holder.get("session")
-        app = getattr(session, "app", None) if session is not None else None
-        if app is not None:
-            vi_state = getattr(app.current_buffer, "vi_state", None)
-            if vi_state is not None and vi_state.input_mode == InputMode.NAVIGATION:
-                mode = "NORMAL"
+        if vim_enabled:
+            mode = "INSERT"
+            session = session_holder.get("session")
+            app = getattr(session, "app", None) if session is not None else None
+            if app is not None:
+                vi_state = getattr(app.current_buffer, "vi_state", None)
+                if vi_state is not None and vi_state.input_mode == InputMode.NAVIGATION:
+                    mode = "NORMAL"
+            status_parts.append(f"[ VIM ] -- {mode} --")
+        else:
+            status_parts.append("[ -- ]")
 
-        return f"[ VIM ] -- {mode} --"
+        status_parts.append(f"model: {args.model or 'default'}")
+        status_parts.append(f"effort: {args.effort or 'default'}")
+        if args.yolo:
+            status_parts.append("⚡ yolo")
+        if args.allow_all:
+            status_parts.append("✓ allow-all")
+        status_parts.append(f"turn: {turn_count}")
+
+        return "  |  ".join(status_parts)
 
     session = PromptSession(
         editing_mode=EditingMode.VI,
@@ -122,6 +134,7 @@ def main() -> int:
         if not command:
             continue
 
+        turn_count += 1
         result = subprocess.run(
             ["gh", "copilot", "-p", text, "--continue", "-s", *base_flags],
             check=False,
