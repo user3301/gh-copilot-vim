@@ -42,8 +42,9 @@ gh copilot -p "<text>" --continue -s [forwarded flags]
 - `:q` / `:quit` exits
 - `Ctrl+D` / `Ctrl+C` exits
 
-Bottom toolbar mode indicator:
+Bottom toolbar statusline:
 
-- vim ON + insert: `[ VIM ] -- INSERT --`
-- vim ON + normal: `[ VIM ] -- NORMAL --`
-- vim OFF: `[ -- ]`
+- vim ON + insert: `[ VIM ] -- INSERT --  |  model: default  |  effort: default  |  turn: 0`
+- vim ON + normal: `[ VIM ] -- NORMAL --  |  model: default  |  effort: default  |  turn: 0`
+- vim OFF: `[ -- ]  |  model: default  |  effort: default  |  turn: 0`
+- active flags are appended when enabled, for example: `⚡ yolo` and `✓ allow-all`
